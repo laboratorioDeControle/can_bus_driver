@@ -8,25 +8,36 @@ import can
 class CanBusNode(Node):
     def __init__(self):
         super().__init__('can_bus_node')
+        self.get_logger().info("Starting CanBusNode...")
 
         self._can_bus = can.interface.Bus(channel='can0', bustype='socketcan', bitrate=250000)
 
-        self.arbitrary_msg_sub = self.create_subscription(
+        self.payloads_can_tx_msg_sub = self.create_subscription(
             UInt8MultiArray,
-            '/write_can_msg',
-            self.arbitrary_msg_callback,
+            '/payloads_can_tx',
+            self.payloads_can_tx_msg_callback,
+            10)
+            
+        self.general_can_tx_msg_sub = self.create_subscription(
+            UInt8MultiArray,
+            '/general_purpose_can_tx',
+            self.general_can_tx_msg_callback,
             10)
 
-        self.actuators_sub = self.create_subscription(
+        self.actuators_can_tx_sub = self.create_subscription(
             UInt8MultiArray,
-            '/actuators_signals',
-            self.actuators_msg_callback,
+            '/actuators_can_tx',
+            self.actuators_can_tx_msg_callback,
             10)
+        self.get_logger().info('CanBusNode started successfully.')
 
-    def arbitrary_msg_callback(self, msg):
+    def general_can_tx_msg_callback(self, msg):
         self.send_msg(msg.data[0], msg.data[1::])
 
-    def actuators_msg_callback(self, msg):
+    def payloads_can_tx_msg_callback(self, msg):
+        self.send_msg(0x03, msg.data)
+        
+    def actuators_can_tx_msg_callback(self, msg):
         self.send_msg(0x01, msg.data)
     
     def send_msg(self, msg_id: int, msg_data: list):
@@ -41,8 +52,7 @@ def main(args=None):
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
-        node.get_logger().info("Ctrl+C detectado. Encerrando com segurança...")
-        node.stop_all()
+        node.get_logger().info("Ctrl+C detected. Shutting down safely...")
     finally:
         node.destroy_node()
         rclpy.shutdown()
