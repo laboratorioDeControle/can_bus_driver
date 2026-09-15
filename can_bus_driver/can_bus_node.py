@@ -9,8 +9,12 @@ class CanBusNode(Node):
     def __init__(self):
         super().__init__('can_bus_node')
         self.get_logger().info("Starting CanBusNode...")
-
-        self._can_bus = can.interface.Bus(channel='can0', bustype='socketcan', bitrate=250000)
+        
+        self._can_bus = None 
+        try:
+            self._can_bus = can.interface.Bus(channel='can0', bustype='socketcan', bitrate=250000)
+        except OSError:
+            print("CanBusNode: CAN Bus not detected. CanBus in print mode...")
 
         self.payloads_can_tx_msg_sub = self.create_subscription(
             UInt8MultiArray,
@@ -42,7 +46,13 @@ class CanBusNode(Node):
     
     def send_msg(self, msg_id: int, msg_data: list):
         can_msg = can.Message(arbitration_id=msg_id, data=msg_data, is_extended_id=False)
-        self._can_bus.send(can_msg)
+
+        if self._can_bus is not None:
+            self._can_bus.send(can_msg)
+        else:
+            print("CanBusNode: ")
+            print("  msg_id: ", msg_id)
+            print("  msg_data: ", msg_data)
 
 
 def main(args=None):
